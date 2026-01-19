@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分割手数料計算アプリ</title>
+    <style>
+        :root {
+            --color-primary: #32b8c6;
+            --color-primary-hover: #1d745f;
+            --color-primary-active: #1a7273;
+            --color-bg: #fcfcf9;
+            --color-surface: #ffffff;
+            --color-text: #134252;
+            --color-text-secondary: #626c71;
+            --color-border: rgba(94, 82, 64, 0.2);
+            --color-success: #208d8d;
+            --color-error: #c0152f;
+            --color-warning: #a84b2f;
+            --color-focus: rgba(33, 128, 141, 0.4);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            padding: 12px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 16px 0;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        section {
+            background: var(--color-surface);
+            border-radius: 8px;
+            border: 1px solid var(--color-border);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+        }
+
+        section h2 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--color-primary);
+            border-bottom: 1px solid var(--color-border);
+            padding-bottom: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--color-text);
+        }
+
+        select, input[type="text"], input[type="number"] {
+            width: 100%;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background: var(--color-surface);
+            color: var(--color-text);
+            font-family: inherit;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-focus);
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .product-item {
+            background: #f5f5f5;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+        }
+
+        .product-item .form-group {
+            margin-bottom: 8px;
+        }
+
+        .product-item input, .product-item select {
+            padding: 8px;
+            font-size: 13px;
+        }
+
+        .btn-remove {
+            background: #f5f5f5;
+            border: 1px solid var(--color-error);
+            color: var(--color-error);
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .btn-remove:hover {
+            background: rgba(192, 21, 47, 0.1);
+        }
+
+        button.btn-add {
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+
+        button.btn-add:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .result-box {
+            background: #f9f9f9;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 12px;
+            text-align: center;
+        }
+
+        .result-label {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .result-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .result-sub {
+            font-size: 10px;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+
+        .calculation-summary {
+            background: linear-gradient(135deg, rgba(50, 184, 198, 0.05), rgba(50, 184, 198, 0.02));
+            border-left: 4px solid var(--color-primary);
+            padding: 12px;
+            border-radius: 4px;
+            margin-top: 12px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dotted var(--color-border);
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .summary-label {
+            color: var(--color-text-secondary);
+        }
+
+        .summary-value {
+            font-weight: 600;
+            color: var(--color-text);
+        }
+
+        .final-total {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 2px solid var(--color-primary);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--color-primary);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn-calculate {
+            background: var(--color-primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .btn-calculate:hover {
+            background: var(--color-primary-hover);
+        }
+
+        .btn-calculate:active {
+            background: var(--color-primary-active);
+        }
+
+        .history-item {
+            background: #f9f9f9;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .history-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .history-time {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-bottom: 4px;
+        }
+
+        .history-customer {
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .history-total {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .history-detail {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-top: 4px;
+        }
+
+        .btn-delete {
+            background: rgba(192, 21, 47, 0.1);
+            color: var(--color-error);
+            border: 1px solid var(--color-error);
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-weight: 500;
+            width: 100%;
+        }
+
+        .btn-delete:hover {
+            background: rgba(192, 21, 47, 0.2);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            color: var(--color-text-secondary);
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            margin-bottom: -2px;
+        }
+
+        .tab-btn.active {
+            color: var(--color-primary);
+            border-bottom-color: var(--color-primary);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: flex-end;
+        }
+
+        .modal-content {
+            background: var(--color-surface);
+            width: 100%;
+            max-height: 90vh;
+            border-radius: 12px 12px 0 0;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .modal-close {
+            background: var(--color-border);
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            width: 100%;
+            margin-top: 12px;
+        }
+
+        .detail-section {
+            background: #f5f5f5;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .detail-section h3 {
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--color-primary);
+        }
+
+        .detail-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            margin-bottom: 6px;
+            padding-bottom: 6px;
+            border-bottom: 1px dotted var(--color-border);
+        }
+
+        .detail-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px 12px;
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 8px;
+        }
+
+        .empty-state-text {
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>分割手数料計算アプリ</h1>
+            <p class="subtitle">商品計算 × 支払い手数料</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('calculator')">計算</button>
+            <button class="tab-btn" onclick="switchTab('history')">履歴</button>
+            <button class="tab-btn" onclick="switchTab('preset')">リスト管理</button>
+        </div>
+
+        <!-- 計算タブ -->
+        <div id="calculator" class="tab-content active">
+            <section>
+                <h2>基本情報</h2>
+                <div class="form-group">
+                    <label>顧客種別</label>
+                    <select id="customerType" onchange="updateCalculation()">
+                        <option value="student">修科生</option>
+                        <option value="member">しゅう美会生</option>
+                        <option value="instructor">講師</option>
+                    </select>
+                </div>
+            </section>
+
+            <section>
+                <h2>商品情報</h2>
+                <div id="productsList"></div>
+                <button class="btn-add" onclick="addProduct()">+ 商品を追加</button>
+            </section>
+
+            <section>
+                <h2>支払い方法（ジャックスカード）</h2>
+                <div class="form-group">
+                    <label>支払い回数</label>
+                    <select id="jackxPayments" onchange="updateCalculation()">
+                        <option value="1">1回（手数料: 0%）</option>
+                        <option value="3">3回（手数料: 0%）</option>
+                        <option value="6">6回（手数料: 0%）</option>
+                        <option value="10">10回（手数料: 0%）</option>
+                        <option value="12">12回（手数料: 1.2%）</option>
+                        <option value="15">15回（手数料: 3.0%）</option>
+                        <option value="18">18回（手数料: 4.8%）</option>
+                        <option value="20">20回（手数料: 6.0%）</option>
+                        <option value="24">24回（手数料: 8.4%）</option>
+                        <option value="30">30回（手数料: 12.0%）</option>
+                        <option value="36">36回（手数料: 15.6%）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>スキップ月数</label>
+                    <select id="jackxSkip" onchange="updateCalculation()">
+                        <option value="0">スキップなし</option>
+                        <option value="1">1ヶ月スキップ（+0.5%）</option>
+                        <option value="2">2ヶ月スキップ（+1.0%）</option>
+                        <option value="3">3ヶ月スキップ（+1.5%）</option>
+                        <option value="4">4ヶ月スキップ（+2.0%）</option>
+                        <option value="5">5ヶ月スキップ（+2.5%）</option>
+                        <option value="6">6ヶ月スキップ（+3.0%）</option>
+                    </select>
+                </div>
+            </section>
+
+            <section>
+                <h2>支払い方法（ショッピング・KL）</h2>
+                <div class="form-group">
+                    <label>支払い回数</label>
+                    <select id="klPayments" onchange="updateCalculation()">
+                        <option value="1">1回（手数料: 0%）</option>
+                        <option value="3">3回（手数料: 0%）</option>
+                        <option value="6">6回（手数料: 0%）</option>
+                        <option value="10">10回（手数料: 0%）</option>
+                        <option value="12">12回（手数料: 1.0%）</option>
+                        <option value="15">15回（手数料: 2.1%）</option>
+                        <option value="18">18回（手数料: 3.1%）</option>
+                        <option value="20">20回（手数料: 3.8%）</option>
+                        <option value="24">24回（手数料: 5.2%）</option>
+                        <option value="30">30回（手数料: 7.3%）</option>
+                        <option value="36">36回（手数料: 9.4%）</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>スキップ月数</label>
+                    <select id="klSkip" onchange="updateCalculation()">
+                        <option value="0">スキップなし</option>
+                        <option value="1">1ヶ月スキップ（+0.5%）</option>
+                        <option value="2">2ヶ月スキップ（+1.0%）</option>
+                        <option value="3">3ヶ月スキップ（+1.5%）</option>
+                        <option value="4">4ヶ月スキップ（+2.0%）</option>
+                        <option value="5">5ヶ月スキップ（+2.5%）</option>
+                        <option value="6">6ヶ月スキップ（+3.0%）</option>
+                    </select>
+                </div>
+            </section>
+
+            <button class="btn-calculate" onclick="saveToHistory()">計算結果を保存</button>
+
+            <section id="resultsSection" style="display: none;">
+                <h2>計算結果</h2>
+                <div class="calculation-summary" id="summaryDetails"></div>
+            </section>
+        </div>
+
+        <!-- 履歴タブ -->
+        <div id="history" class="tab-content">
+            <section id="historySection"></section>
+        </div>
+
+        <!-- リスト管理タブ -->
+        <div id="preset" class="tab-content">
+            <section>
+                <h2>ジャックスカード手数料管理</h2>
+                <div id="jackxFeeList"></div>
+            </section>
+            <section>
+                <h2>ショッピング・KL手数料管理</h2>
+                <div id="klFeeList"></div>
+            </section>
+            <section>
+                <h2>ガード管理</h2>
+                <div id="guardList"></div>
+                <button class="btn-add" onclick="addPresetItem('guard')">+ ガードを追加</button>
+            </section>
+            <section>
+                <h2>裏物管理</h2>
+                <div id="liningList"></div>
+                <button class="btn-add" onclick="addPresetItem('lining')">+ 裏物を追加</button>
+            </section>
+            <section>
+                <h2>仕立管理</h2>
+                <div id="tailorList"></div>
+                <button class="btn-add" onclick="addPresetItem('tailor')">+ 仕立を追加</button>
+            </section>
+            <section>
+                <h2>その他管理</h2>
+                <div id="otherList"></div>
+                <button class="btn-add" onclick="addPresetItem('other')">+ その他を追加</button>
+            </section>
+        </div>
+    </div>
+
+    <div class="modal" id="detailModal">
+        <div class="modal-content" id="detailContent"></div>
+    </div>
+
+    <script>
+        // 手数料テーブル
+        const feeStructure = {
+            jackx: {
+                payments: {
+                    1: 0, 3: 0, 6: 0, 10: 0, 12: 1.2, 15: 3.0, 18: 4.8, 20: 6.0, 24: 8.4, 30: 12.0, 36: 15.6
+                },
+                skip: { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }
+            },
+            kl: {
+                payments: {
+                    1: 0, 3: 0, 6: 0, 10: 0, 12: 1.0, 15: 2.1, 18: 3.1, 20: 3.8, 24: 5.2, 30: 7.3, 36: 9.4
+                },
+                skip: { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }
+            }
+        };
+
+        // プリセットデータ（LocalStorageから読み込み）
+        let presetData = {
+            guard: [
+                { id: 1, name: 'ガード（標準）', price: 3000 },
+                { id: 2, name: 'ガード（厚手）', price: 4000 },
+                { id: 3, name: 'ガード（特殊）', price: 5000 }
+            ],
+            lining: [
+                { id: 4, name: '裏物（標準）', price: 2000 },
+                { id: 5, name: '裏物（上質）', price: 3500 },
+                { id: 6, name: '裏物（特殊）', price: 4500 }
+            ],
+            tailor: [
+                { id: 7, name: '仕立（標準）', price: 15000 },
+                { id: 8, name: '仕立（高級）', price: 25000 },
+                { id: 9, name: '仕立（特殊）', price: 35000 }
+            ],
+            other: [
+                { id: 10, name: 'その他（¥5,000）', price: 5000 },
+                { id: 11, name: 'その他（¥10,000）', price: 10000 },
+                { id: 12, name: 'その他（¥15,000）', price: 15000 }
+            ]
+        };
+
+        let feeStructureData = {
+            jackx: [
+                { payments: 1, fee: 0 },
+                { payments: 3, fee: 0 },
+                { payments: 6, fee: 0 },
+                { payments: 10, fee: 0 },
+                { payments: 12, fee: 1.2 },
+                { payments: 15, fee: 3.0 },
+                { payments: 18, fee: 4.8 },
+                { payments: 20, fee: 6.0 },
+                { payments: 24, fee: 8.4 },
+                { payments: 30, fee: 12.0 },
+                { payments: 36, fee: 15.6 }
+            ],
+            kl: [
+                { payments: 1, fee: 0 },
+                { payments: 3, fee: 0 },
+                { payments: 6, fee: 0 },
+                { payments: 10, fee: 0 },
+                { payments: 12, fee: 1.0 },
+                { payments: 15, fee: 2.1 },
+                { payments: 18, fee: 3.1 },
+                { payments: 20, fee: 3.8 },
+                { payments: 24, fee: 5.2 },
+                { payments: 30, fee: 7.3 },
+                { payments: 36, fee: 9.4 }
+            ]
+        };
+
+        // プリセットデータを初期化
+        function initPresetData() {
+            const saved = localStorage.getItem('presetData');
+            if (saved) {
+                presetData = JSON.parse(saved);
+            } else {
+                savePresetData();
+            }
+            const savedFee = localStorage.getItem('feeStructureData');
+            if (savedFee) {
+                feeStructureData = JSON.parse(savedFee);
+            } else {
+                saveFeeStructureData();
+            }
+        }
+
+        function savePresetData() {
+            localStorage.setItem('presetData', JSON.stringify(presetData));
+        }
+
+        function saveFeeStructureData() {
+            localStorage.setItem('feeStructureData', JSON.stringify(feeStructureData));
+        }
+
+        let products = [];
+        let calculation = null;
+
+        function addProduct() {
+            const id = Date.now();
+            products.push({ id, category: 'kimono_awase', price: '' });
+            renderProducts();
+            updateCalculation();
+        }
+
+        function selectPreset(id, presetId) {
+            const product = products.find(p => p.id === id);
+            if (product && presetId) {
+                const preset = presetData[product.category].find(p => p.id == presetId);
+                if (preset) {
+                    product.price = preset.price;
+                    product.presetId = preset.id;
+                    updateCalculation();
+                }
+            }
+        }
+
+        function addPresetItem(category) {
+            const newId = Math.max(...presetData[category].map(p => p.id || 0), 0) + 1;
+            presetData[category].push({
+                id: newId,
+                name: `新規（¥0）`,
+                price: 0
+            });
+            savePresetData();
+            renderPresetList(category);
+        }
+
+        function updatePresetItem(category, index, field, value) {
+            if (field === 'price') {
+                presetData[category][index].price = parseInt(value) || 0;
+            } else {
+                presetData[category][index].name = value;
+            }
+            savePresetData();
+            renderPresetList(category);
+        }
+
+        function deletePresetItem(category, index) {
+            if (confirm('削除しますか？')) {
+                presetData[category].splice(index, 1);
+                savePresetData();
+                renderPresetList(category);
+            }
+        }
+
+        function renderPresetList(category) {
+            const container = document.getElementById(category === 'guard' ? 'guardList' : category === 'lining' ? 'liningList' : category === 'tailor' ? 'tailorList' : 'otherList');
+            
+            container.innerHTML = presetData[category].map((item, index) => `
+                <div class="product-item">
+                    <div class="form-group">
+                        <label>商品名</label>
+                        <input type="text" value="${item.name}" onchange="updatePresetItem('${category}', ${index}, 'name', this.value)">
+                    </div>
+                    <div class="form-group">
+                        <label>金額（円）</label>
+                        <input type="number" value="${item.price}" placeholder="0" onchange="updatePresetItem('${category}', ${index}, 'price', this.value)" oninput="this.value = formatNumberInput(this.value)">
+                    </div>
+                    <button class="btn-remove" onclick="deletePresetItem('${category}', ${index})">削除</button>
+                </div>
+            `).join('');
+        }
+
+        function renderFeeStructureList(cardType) {
+            const container = document.getElementById(cardType === 'jackx' ? 'jackxFeeList' : 'klFeeList');
+            const data = feeStructureData[cardType];
+
+            container.innerHTML = data.map((item, index) => `
+                <div class="product-item">
+                    <div class="row">
+                        <div class="form-group">
+                            <label>支払い回数</label>
+                            <input type="number" value="${item.payments}" onchange="updateFeeStructure('${cardType}', ${index}, 'payments', this.value)" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>手数料（%）</label>
+                            <input type="number" value="${item.fee}" onchange="updateFeeStructure('${cardType}', ${index}, 'fee', this.value)" step="0.1" min="0" max="100">
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updateFeeStructure(cardType, index, field, value) {
+            if (field === 'payments') {
+                feeStructureData[cardType][index].payments = parseInt(value) || 0;
+            } else {
+                feeStructureData[cardType][index].fee = parseFloat(value) || 0;
+            }
+            saveFeeStructureData();
+            updateCalculation();
+        }
+
+        function formatNumberInput(value) {
+            return value.replace(/\D/g, '');
+        }
+
+        function removeProduct(id) {
+            products = products.filter(p => p.id !== id);
+            renderProducts();
+            updateCalculation();
+        }
+
+        function renderProducts() {
+            const container = document.getElementById('productsList');
+            if (products.length === 0) {
+                container.innerHTML = '<p style="color: var(--color-text-secondary); font-size: 12px; text-align: center; padding: 12px;">商品を追加してください</p>';
+                return;
+            }
+
+            container.innerHTML = products.map(product => {
+                const isPresetCategory = ['guard', 'lining', 'tailor', 'other'].includes(product.category);
+                const presetOptions = isPresetCategory ? presetData[product.category] : [];
+                
+                return `
+                    <div class="product-item">
+                        <div class="form-group">
+                            <label>カテゴリー</label>
+                            <select onchange="updateProduct(${product.id}, 'category', this.value); renderProducts(); updateCalculation()">
+                                <option value="kimono_awase" ${product.category === 'kimono_awase' ? 'selected' : ''}>着物(袷)</option>
+                                <option value="kimono_hitoe" ${product.category === 'kimono_hitoe' ? 'selected' : ''}>着物(単衣)</option>
+                                <option value="homongi_awase" ${product.category === 'homongi_awase' ? 'selected' : ''}>訪問着(袷)</option>
+                                <option value="homongi_hitoe" ${product.category === 'homongi_hitoe' ? 'selected' : ''}>訪問着(単衣)</option>
+                                <option value="tsukesage_awase" ${product.category === 'tsukesage_awase' ? 'selected' : ''}>付下げ(袷)</option>
+                                <option value="tsukesage_hitoe" ${product.category === 'tsukesage_hitoe' ? 'selected' : ''}>付下げ(単衣)</option>
+                                <option value="tsukesage_summer" ${product.category === 'tsukesage_summer' ? 'selected' : ''}>付下げ(夏物)</option>
+                                <option value="nagajuban_awase" ${product.category === 'nagajuban_awase' ? 'selected' : ''}>長襦袢(袷)</option>
+                                <option value="nagajuban_hitoe" ${product.category === 'nagajuban_hitoe' ? 'selected' : ''}>長襦袢(単衣)</option>
+                                <option value="coat_awase" ${product.category === 'coat_awase' ? 'selected' : ''}>コート(袷)</option>
+                                <option value="coat_hitoe" ${product.category === 'coat_hitoe' ? 'selected' : ''}>コート(単衣)</option>
+                                <option value="obi" ${product.category === 'obi' ? 'selected' : ''}>帯</option>
+                                <option value="small" ${product.category === 'small' ? 'selected' : ''}>小物</option>
+                                <option value="guard" ${product.category === 'guard' ? 'selected' : ''}>ガード</option>
+                                <option value="lining" ${product.category === 'lining' ? 'selected' : ''}>裏物</option>
+                                <option value="tailor" ${product.category === 'tailor' ? 'selected' : ''}>仕立</option>
+                                <option value="other" ${product.category === 'other' ? 'selected' : ''}>その他</option>
+                            </select>
+                        </div>
+                        ${isPresetCategory ? `
+                            <div class="form-group">
+                                <label>商品を選択</label>
+                                <select onchange="selectPreset(${product.id}, this.value); updateCalculation()">
+                                    <option value="">-- 選択してください --</option>
+                                    ${presetOptions.map(item => `
+                                        <option value="${item.id}" ${product.presetId === item.id ? 'selected' : ''}>${item.name} - ¥${item.price.toLocaleString('ja-JP')}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+                        ` : `
+                            <div class="form-group">
+                                <label>商品単価（円）</label>
+                                <input type="number" value="${product.price}" placeholder="0" onchange="updateProduct(${product.id}, 'price', this.value)" oninput="this.value = formatNumberInput(this.value); updateCalculation()">
+                            </div>
+                        `}
+                        <button class="btn-remove" onclick="removeProduct(${product.id})">削除</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateProduct(id, field, value) {
+            const product = products.find(p => p.id === id);
+            if (product) {
+                product[field] = value;
+                updateCalculation();
+            }
+        }
+
+        function getDiscountRate(customerType, category) {
+            // 修科生：値引きなし
+            if (customerType === 'student') {
+                return 0;
+            }
+            // しゅう美会生：「小物」「仕立」以外は5%割引
+            if (customerType === 'member') {
+                if (category === 'small' || category === 'tailor') return 0;
+                return 5;
+            }
+            // 講師：「小物」以外は10%割引
+            if (customerType === 'instructor') {
+                if (category === 'small') return 0;
+                return 10;
+            }
+            return 0;
+        }
+
+        function formatNumber(num) {
+            return Math.round(num).toLocaleString('ja-JP');
+        }
+
+        function formatNumberWithDecimal(num) {
+            return num.toLocaleString('ja-JP', { maximumFractionDigits: 2, minimumFractionDigits: 0 });
+        }
+
+        function updateCalculation() {
+            if (products.length === 0 || products.some(p => !p.price || isNaN(p.price))) {
+                document.getElementById('resultsSection').style.display = 'none';
+                return;
+            }
+
+            const customerType = document.getElementById('customerType').value;
+            const jackxPayments = parseInt(document.getElementById('jackxPayments').value);
+            const jackxSkip = parseInt(document.getElementById('jackxSkip').value);
+            const klPayments = parseInt(document.getElementById('klPayments').value);
+            const klSkip = parseInt(document.getElementById('klSkip').value);
+
+            // 商品の計算
+            let totalBeforeFee = 0;
+            let totalAfterDiscount = 0;
+            let productDetails = [];
+
+            products.forEach(product => {
+                const price = parseFloat(product.price);
+                const discountRate = getDiscountRate(customerType, product.category);
+                const discountAmount = price * (discountRate / 100);
+                const priceAfterDiscount = price - discountAmount;
+
+                totalBeforeFee += price;
+                totalAfterDiscount += priceAfterDiscount;
+
+                productDetails.push({
+                    category: product.category,
+                    price: price,
+                    discountRate: discountRate,
+                    discountAmount: discountAmount,
+                    priceAfterDiscount: priceAfterDiscount
+                });
+            });
+
+            // ジャックスカードの計算
+            const jackxFeeItem = feeStructureData.jackx.find(f => f.payments == jackxPayments);
+            const jackxFeeRate = jackxFeeItem ? jackxFeeItem.fee : 0;
+            const jackxSkipFee = feeStructure.jackx.skip[jackxSkip];
+            const jackxTotalFeeRate = jackxFeeRate + jackxSkipFee;
+            const jackxFeeAmount = Math.floor(totalAfterDiscount * (jackxTotalFeeRate / 100));
+            const jackxFinal = totalAfterDiscount + jackxFeeAmount;
+            const jackxPerMonth = Math.round(jackxFinal / jackxPayments * 100) / 100;
+
+            // KLの計算
+            const klFeeItem = feeStructureData.kl.find(f => f.payments == klPayments);
+            const klFeeRate = klFeeItem ? klFeeItem.fee : 0;
+            const klSkipFee = feeStructure.kl.skip[klSkip];
+            const klTotalFeeRate = klFeeRate + klSkipFee;
+            const klFeeAmount = Math.floor(totalAfterDiscount * (klTotalFeeRate / 100));
+            const klFinal = totalAfterDiscount + klFeeAmount;
+            const klPerMonth = Math.round(klFinal / klPayments * 100) / 100;
+
+            calculation = {
+                customerType,
+                productDetails,
+                totalBeforeFee,
+                jackx: {
+                    payments: jackxPayments,
+                    skip: jackxSkip,
+                    feeRate: jackxFeeRate,
+                    skipFee: jackxSkipFee,
+                    totalFeeRate: jackxTotalFeeRate,
+                    feeAmount: jackxFeeAmount,
+                    final: jackxFinal,
+                    perMonth: jackxPerMonth
+                },
+                kl: {
+                    payments: klPayments,
+                    skip: klSkip,
+                    feeRate: klFeeRate,
+                    skipFee: klSkipFee,
+                    totalFeeRate: klTotalFeeRate,
+                    feeAmount: klFeeAmount,
+                    final: klFinal,
+                    perMonth: klPerMonth
+                },
+                timestamp: new Date()
+            };
+
+            // 結果の表示
+            const discountTotal = calculation.productDetails.reduce((sum, p) => sum + p.discountAmount, 0);
+
+            const summaryHTML = `
+                <div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--color-border);">
+                    <strong style="color: var(--color-primary); font-size: 13px;">ジャックスカード</strong>
+                    <div class="summary-row">
+                        <span class="summary-label">1. 値引き前合計</span>
+                        <span class="summary-value">¥${formatNumber(totalBeforeFee)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">2. 値引き金額</span>
+                        <span class="summary-value" style="color: var(--color-warning);">-¥${formatNumber(discountTotal)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">3. 値引き後合計</span>
+                        <span class="summary-value">¥${formatNumber(totalAfterDiscount)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">4. 手数料</span>
+                        <span class="summary-value">¥${formatNumber(jackxFeeAmount)} (${jackxTotalFeeRate.toFixed(1)}%)</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">5. 最終合計</span>
+                        <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(jackxFinal)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">6. 1回の支払い（${jackxPayments}回）</span>
+                        <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(jackxPerMonth)}</span>
+                    </div>
+                </div>
+                <div>
+                    <strong style="color: var(--color-primary); font-size: 13px;">ショッピング・KL</strong>
+                    <div class="summary-row">
+                        <span class="summary-label">1. 値引き前合計</span>
+                        <span class="summary-value">¥${formatNumber(totalBeforeFee)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">2. 値引き金額</span>
+                        <span class="summary-value" style="color: var(--color-warning);">-¥${formatNumber(discountTotal)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">3. 値引き後合計</span>
+                        <span class="summary-value">¥${formatNumber(totalAfterDiscount)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">4. 手数料</span>
+                        <span class="summary-value">¥${formatNumber(klFeeAmount)} (${klTotalFeeRate.toFixed(1)}%)</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">5. 最終合計</span>
+                        <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(klFinal)}</span>
+                    </div>
+                    <div class="summary-row">
+                        <span class="summary-label">6. 1回の支払い（${klPayments}回）</span>
+                        <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(klPerMonth)}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('summaryDetails').innerHTML = summaryHTML;
+            document.getElementById('resultsSection').style.display = 'block';
+        }
+
+        function saveToHistory() {
+            if (!calculation) return;
+
+            let history = JSON.parse(localStorage.getItem('calculationHistory') || '[]');
+            history.unshift({
+                ...calculation,
+                id: Date.now()
+            });
+
+            // 最新100件を保持
+            history = history.slice(0, 100);
+
+            localStorage.setItem('calculationHistory', JSON.stringify(history));
+            loadHistory();
+
+            alert('計算結果を保存しました');
+        }
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('calculationHistory') || '[]');
+            const section = document.getElementById('historySection');
+
+            // 最新20件を表示
+            const recentHistory = history.slice(0, 20);
+
+            if (recentHistory.length === 0) {
+                section.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <div class="empty-state-text">計算履歴がまだありません</div>
+                    </div>
+                `;
+                return;
+            }
+
+            section.innerHTML = '<h2 style="margin-bottom: 12px;">計算履歴（最新20件）</h2>' + recentHistory.map((calc, index) => {
+                const customerLabel = {
+                    'student': '修科生',
+                    'member': 'しゅう美会生',
+                    'instructor': '講師'
+                }[calc.customerType];
+
+                return `
+                    <div class="history-item" onclick="showDetail(${history.indexOf(calc)})">
+                        <div class="history-time">${new Date(calc.timestamp).toLocaleString('ja-JP')}</div>
+                        <div class="history-customer">${customerLabel}</div>
+                        <div class="history-total">最終合計: ¥${formatNumber(calc.jackx.final)} / ¥${formatNumber(calc.kl.final)}</div>
+                        <div class="history-detail">ジャックス ${calc.jackx.payments}回 / KL ${calc.kl.payments}回</div>
+                        <button class="btn-delete" onclick="deleteHistory(${history.indexOf(calc)}, event)">削除</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function showDetail(index) {
+            const history = JSON.parse(localStorage.getItem('calculationHistory') || '[]');
+            const calc = history[index];
+
+            const customerLabel = {
+                'student': '修科生',
+                'member': 'しゅう美会生',
+                'instructor': '講師'
+            }[calc.customerType];
+
+            const categoryLabel = {
+                'kimono_awase': '着物(袷)',
+                'kimono_hitoe': '着物(単衣)',
+                'homongi_awase': '訪問着(袷)',
+                'homongi_hitoe': '訪問着(単衣)',
+                'tsukesage_awase': '付下げ(袷)',
+                'tsukesage_hitoe': '付下げ(単衣)',
+                'tsukesage_summer': '付下げ(夏物)',
+                'nagajuban_awase': '長襦袢(袷)',
+                'nagajuban_hitoe': '長襦袢(単衣)',
+                'coat_awase': 'コート(袷)',
+                'coat_hitoe': 'コート(単衣)',
+                'obi': '帯',
+                'small': '小物',
+                'guard': 'ガード',
+                'lining': '裏物',
+                'tailor': '仕立',
+                'other': 'その他'
+            };
+
+            let productHTML = '';
+            calc.productDetails.forEach((prod, i) => {
+                productHTML += `
+                    <div class="detail-item">
+                        <span>${i + 1}. ${categoryLabel[prod.category]} - ¥${formatNumber(prod.price)}</span>
+                    </div>
+                `;
+                if (prod.discountAmount > 0) {
+                    productHTML += `
+                        <div class="detail-item" style="padding-left: 16px; font-size: 11px; color: var(--color-warning);">
+                            <span>割引 (-${prod.discountRate}%)</span>
+                            <span>-¥${formatNumber(prod.discountAmount)}</span>
+                        </div>
+                    `;
+                }
+            });
+
+            const content = `
+                <h2 style="margin-bottom: 12px; color: var(--color-primary);">計算詳細</h2>
+                
+                <div class="detail-section">
+                    <h3>基本情報</h3>
+                    <div class="detail-item">
+                        <span>顧客種別</span>
+                        <span>${customerLabel}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>計算日時</span>
+                        <span>${new Date(calc.timestamp).toLocaleString('ja-JP')}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>商品内訳</h3>
+                    ${productHTML}
+                </div>
+
+                <div class="detail-section">
+                    <h3>ジャックスカード</h3>
+                    <div class="detail-item">
+                        <span>1. 値引き前合計</span>
+                        <span>¥${formatNumber(calc.totalBeforeFee)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>2. 値引き金額</span>
+                        <span style="color: var(--color-warning);">-¥${formatNumber(calc.productDetails.reduce((sum, p) => sum + p.discountAmount, 0))}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>3. 手数料 (${calc.jackx.totalFeeRate.toFixed(1)}%)</span>
+                        <span>+¥${formatNumber(calc.jackx.feeAmount)}</span>
+                    </div>
+                    <div class="detail-item" style="border-top: 1px solid var(--color-border); padding-top: 6px; margin-top: 6px;">
+                        <span style="font-weight: 600;">4. 最終合計</span>
+                        <span style="font-weight: 600; color: var(--color-primary);">¥${formatNumber(calc.jackx.final)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>5. 支払い回数</span>
+                        <span>${calc.jackx.payments}回</span>
+                    </div>
+                    <div class="detail-item">
+                        <span style="font-weight: 600;">6. 1回の支払い</span>
+                        <span style="font-weight: 600;">¥${formatNumber(calc.jackx.perMonth)}</span>
+                    </div>
+                </div>
+
+                <div class="detail-section">
+                    <h3>ショッピング・KL</h3>
+                    <div class="detail-item">
+                        <span>1. 値引き前合計</span>
+                        <span>¥${formatNumber(calc.totalBeforeFee)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>2. 値引き金額</span>
+                        <span style="color: var(--color-warning);">-¥${formatNumber(calc.productDetails.reduce((sum, p) => sum + p.discountAmount, 0))}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>3. 手数料 (${calc.kl.totalFeeRate.toFixed(1)}%)</span>
+                        <span>+¥${formatNumber(calc.kl.feeAmount)}</span>
+                    </div>
+                    <div class="detail-item" style="border-top: 1px solid var(--color-border); padding-top: 6px; margin-top: 6px;">
+                        <span style="font-weight: 600;">4. 最終合計</span>
+                        <span style="font-weight: 600; color: var(--color-primary);">¥${formatNumber(calc.kl.final)}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>5. 支払い回数</span>
+                        <span>${calc.kl.payments}回</span>
+                    </div>
+                    <div class="detail-item">
+                        <span style="font-weight: 600;">6. 1回の支払い</span>
+                        <span style="font-weight: 600;">¥${formatNumber(calc.kl.perMonth)}</span>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('detailContent').innerHTML = content + '<button class="modal-close" onclick="closeModal()">閉じる</button>';
+            document.getElementById('detailModal').classList.add('active');
+        }
+
+        function deleteHistory(index, event) {
+            event.stopPropagation();
+            if (confirm('この履歴を削除しますか？')) {
+                let history = JSON.parse(localStorage.getItem('calculationHistory') || '[]');
+                history.splice(index, 1);
+                localStorage.setItem('calculationHistory', JSON.stringify(history));
+                loadHistory();
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        function switchTab(tab) {
+            // タブ切り替え
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'history') {
+                loadHistory();
+            } else if (tab === 'preset') {
+                renderFeeStructureList('jackx');
+                renderFeeStructureList('kl');
+                renderPresetList('guard');
+                renderPresetList('lining');
+                renderPresetList('tailor');
+                renderPresetList('other');
+            }
+        }
+
+        // 初期化
+        initPresetData();
+        addProduct();
+        loadHistory();
+
+        // PWA対応：ServiceWorkerの登録
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('data:application/javascript,self.addEventListener("install",e=>self.skipWaiting());self.addEventListener("activate",e=>e.waitUntil(clients.claim()));').catch(err => console.log('SW registration failed', err));
+        }
+    </script>
+</body>
+</html>
