@@ -455,29 +455,10 @@
             color: var(--color-text);
         }
 
-        .download-btn {
-            background: var(--color-success);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            width: 100%;
-            margin-bottom: 12px;
-            transition: all 0.2s;
-        }
-
-        .download-btn:hover {
-            background: #1a8c8c;
-        }
-
-        .skip-fee-breakdown {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid var(--color-border);
+        .fee-detail {
             font-size: 11px;
+            color: var(--color-text-secondary);
+            margin-left: 12px;
         }
     </style>
 </head>
@@ -497,8 +478,6 @@
                 <h1>分割手数料計算アプリ</h1>
                 <p class="subtitle">商品計算 × 支払い手数料</p>
             </header>
-
-            <button class="download-btn" onclick="downloadApp()">📥 アプリをダウンロード</button>
 
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('calculator')">計算</button>
@@ -554,7 +533,7 @@
                 </section>
                 <section>
                     <h2>スキップ手数料管理</h2>
-                    <div id="cardSkipFeeTable"></div>
+                    <div id="skipFeeTable"></div>
                 </section>
                 <section>
                     <h2>ガード管理</h2>
@@ -592,6 +571,7 @@
         // グローバル変数の初期化
         let cardTypes = [];
         let categoryDiscounts = {};
+        let skipFeeRates = {};
 
         // プリセットデータ
         let presetData = {
@@ -653,16 +633,16 @@
             'homongi_hitoe': '訪問着(単衣)',
             'tsukesage_awase': '付下げ(袷)',
             'tsukesage_hitoe': '付下げ(単衣)',
-            'tsukesage_summer': '付下げ(夏物)',
             'nagajuban_awase': '長襦袢(袷)',
             'nagajuban_hitoe': '長襦袢(単衣)',
             'coat_awase': 'コート(袷)',
             'coat_hitoe': 'コート(単衣)',
             'obi': '帯',
-            'small': '小物'
+            'small_discount': '小物(値引き有り)',
+            'small_no_discount': '小物(値引き無し)'
         };
 
-        const categoryList = ['kimono_awase', 'kimono_hitoe', 'homongi_awase', 'homongi_hitoe', 'tsukesage_awase', 'tsukesage_hitoe', 'tsukesage_summer', 'nagajuban_awase', 'nagajuban_hitoe', 'coat_awase', 'coat_hitoe', 'obi', 'small'];
+        const categoryList = ['kimono_awase', 'kimono_hitoe', 'homongi_awase', 'homongi_hitoe', 'tsukesage_awase', 'tsukesage_hitoe', 'nagajuban_awase', 'nagajuban_hitoe', 'coat_awase', 'coat_hitoe', 'obi', 'small_discount', 'small_no_discount'];
 
         function initPresetData() {
             const saved = localStorage.getItem('presetData');
@@ -676,6 +656,7 @@
             initCardTypes();
             initCategoryDiscounts();
             initProductDiscountRates();
+            initSkipFeeRates();
         }
 
         function initCardTypes() {
@@ -699,13 +680,6 @@
                 ];
                 saveCardTypes();
             }
-
-            cardTypes.forEach(card => {
-                if (!card.skipFees) {
-                    card.skipFees = { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 };
-                }
-            });
-            saveCardTypes();
         }
 
         function initCategoryDiscounts() {
@@ -717,7 +691,29 @@
                 categoryList.forEach(cat => {
                     categoryDiscounts[cat] = { student: 0, member: 0, instructor: 0 };
                 });
+                // 古いデータから移行対応
+                if (categoryDiscounts['small']) {
+                    categoryDiscounts['small_discount'] = categoryDiscounts['small'];
+                    categoryDiscounts['small_no_discount'] = { student: 0, member: 0, instructor: 0 };
+                    delete categoryDiscounts['small'];
+                }
+                if (categoryDiscounts['tsukesage_summer']) {
+                    delete categoryDiscounts['tsukesage_summer'];
+                }
                 saveCategoryDiscounts();
+            }
+        }
+
+        function initSkipFeeRates() {
+            const saved = localStorage.getItem('skipFeeRates');
+            if (saved) {
+                skipFeeRates = JSON.parse(saved);
+            } else {
+                skipFeeRates = {};
+                cardTypes.forEach(card => {
+                    skipFeeRates[card.id] = { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 };
+                });
+                saveSkipFeeRates();
             }
         }
 
@@ -735,6 +731,10 @@
 
         function saveFeeStructureData() {
             localStorage.setItem('feeStructureData', JSON.stringify(feeStructureData));
+        }
+
+        function saveSkipFeeRates() {
+            localStorage.setItem('skipFeeRates', JSON.stringify(skipFeeRates));
         }
 
         let products = [];
@@ -810,13 +810,13 @@
                                 <option value="homongi_hitoe" ${product.category === 'homongi_hitoe' ? 'selected' : ''}>訪問着(単衣)</option>
                                 <option value="tsukesage_awase" ${product.category === 'tsukesage_awase' ? 'selected' : ''}>付下げ(袷)</option>
                                 <option value="tsukesage_hitoe" ${product.category === 'tsukesage_hitoe' ? 'selected' : ''}>付下げ(単衣)</option>
-                                <option value="tsukesage_summer" ${product.category === 'tsukesage_summer' ? 'selected' : ''}>付下げ(夏物)</option>
                                 <option value="nagajuban_awase" ${product.category === 'nagajuban_awase' ? 'selected' : ''}>長襦袢(袷)</option>
                                 <option value="nagajuban_hitoe" ${product.category === 'nagajuban_hitoe' ? 'selected' : ''}>長襦袢(単衣)</option>
                                 <option value="coat_awase" ${product.category === 'coat_awase' ? 'selected' : ''}>コート(袷)</option>
                                 <option value="coat_hitoe" ${product.category === 'coat_hitoe' ? 'selected' : ''}>コート(単衣)</option>
                                 <option value="obi" ${product.category === 'obi' ? 'selected' : ''}>帯</option>
-                                <option value="small" ${product.category === 'small' ? 'selected' : ''}>小物</option>
+                                <option value="small_discount" ${product.category === 'small_discount' ? 'selected' : ''}>小物(値引き有り)</option>
+                                <option value="small_no_discount" ${product.category === 'small_no_discount' ? 'selected' : ''}>小物(値引き無し)</option>
                                 <option value="guard" ${product.category === 'guard' ? 'selected' : ''}>ガード</option>
                                 <option value="lining" ${product.category === 'lining' ? 'selected' : ''}>裏物</option>
                                 <option value="tailor" ${product.category === 'tailor' ? 'selected' : ''}>仕立</option>
@@ -906,21 +906,17 @@
 
             const jackxCard = cardTypes.find(c => c.id === 'jackx');
             const jackxFeeRate = jackxCard && jackxCard.payments[jackxPayments] !== undefined ? jackxCard.payments[jackxPayments] : 0;
-            const jackxSkipFee = jackxCard && (jackxCard.skipFees && jackxCard.skipFees[jackxSkip] !== undefined) ? jackxCard.skipFees[jackxSkip] : 0;
-            const jackxTotalFeeRate = jackxFeeRate + jackxSkipFee;
-            const jackxPaymentFeeAmount = Math.floor(totalAfterDiscount * (jackxFeeRate / 100));
-            const jackxSkipFeeAmount = Math.floor(totalAfterDiscount * (jackxSkipFee / 100));
-            const jackxFeeAmount = jackxPaymentFeeAmount + jackxSkipFeeAmount;
+            const jackxSkipFeeRate = skipFeeRates['jackx'] && skipFeeRates['jackx'][jackxSkip] !== undefined ? skipFeeRates['jackx'][jackxSkip] : 0;
+            const jackxTotalFeeRate = jackxFeeRate + jackxSkipFeeRate;
+            const jackxFeeAmount = Math.floor(totalAfterDiscount * (jackxTotalFeeRate / 100));
             const jackxFinal = totalAfterDiscount + jackxFeeAmount;
             const jackxPerMonth = Math.floor(jackxFinal / jackxPayments * 100) / 100;
 
             const klCard = cardTypes.find(c => c.id === 'kl');
             const klFeeRate = klCard && klCard.payments[klPayments] !== undefined ? klCard.payments[klPayments] : 0;
-            const klSkipFee = klCard && (klCard.skipFees && klCard.skipFees[klSkip] !== undefined) ? klCard.skipFees[klSkip] : 0;
-            const klTotalFeeRate = klFeeRate + klSkipFee;
-            const klPaymentFeeAmount = Math.floor(totalAfterDiscount * (klFeeRate / 100));
-            const klSkipFeeAmount = Math.floor(totalAfterDiscount * (klSkipFee / 100));
-            const klFeeAmount = klPaymentFeeAmount + klSkipFeeAmount;
+            const klSkipFeeRate = skipFeeRates['kl'] && skipFeeRates['kl'][klSkip] !== undefined ? skipFeeRates['kl'][klSkip] : 0;
+            const klTotalFeeRate = klFeeRate + klSkipFeeRate;
+            const klFeeAmount = Math.floor(totalAfterDiscount * (klTotalFeeRate / 100));
             const klFinal = totalAfterDiscount + klFeeAmount;
             const klPerMonth = Math.floor(klFinal / klPayments * 100) / 100;
 
@@ -934,10 +930,8 @@
                     payments: jackxPayments,
                     skip: jackxSkip,
                     feeRate: jackxFeeRate,
-                    skipFee: jackxSkipFee,
+                    skipFeeRate: jackxSkipFeeRate,
                     totalFeeRate: jackxTotalFeeRate,
-                    paymentFeeAmount: jackxPaymentFeeAmount,
-                    skipFeeAmount: jackxSkipFeeAmount,
                     feeAmount: jackxFeeAmount,
                     final: jackxFinal,
                     perMonth: jackxPerMonth
@@ -946,10 +940,8 @@
                     payments: klPayments,
                     skip: klSkip,
                     feeRate: klFeeRate,
-                    skipFee: klSkipFee,
+                    skipFeeRate: klSkipFeeRate,
                     totalFeeRate: klTotalFeeRate,
-                    paymentFeeAmount: klPaymentFeeAmount,
-                    skipFeeAmount: klSkipFeeAmount,
                     feeAmount: klFeeAmount,
                     final: klFinal,
                     perMonth: klPerMonth
@@ -974,13 +966,9 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">4. 手数料</span>
-                        <span class="summary-value">¥${formatNumber(jackxFeeAmount)} (${jackxTotalFeeRate.toFixed(1)}%)
-                            <div class="skip-fee-breakdown">
-                                <div>支払い回数手数料: ¥${formatNumber(jackxPaymentFeeAmount)} (${jackxFeeRate.toFixed(1)}%)</div>
-                                <div>スキップ手数料: ¥${formatNumber(jackxSkipFeeAmount)} (${jackxSkipFee.toFixed(1)}%)</div>
-                            </div>
-                        </span>
+                        <span class="summary-value">¥${formatNumber(jackxFeeAmount)}</span>
                     </div>
+                    <div class="fee-detail">支払い回数: ${jackxFeeRate.toFixed(1)}% | スキップ: ${jackxSkipFeeRate.toFixed(1)}% | 合計: ${jackxTotalFeeRate.toFixed(1)}%</div>
                     <div class="summary-row">
                         <span class="summary-label">5. 最終合計</span>
                         <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(jackxFinal)}</span>
@@ -1006,13 +994,9 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">4. 手数料</span>
-                        <span class="summary-value">¥${formatNumber(klFeeAmount)} (${klTotalFeeRate.toFixed(1)}%)
-                            <div class="skip-fee-breakdown">
-                                <div>支払い回数手数料: ¥${formatNumber(klPaymentFeeAmount)} (${klFeeRate.toFixed(1)}%)</div>
-                                <div>スキップ手数料: ¥${formatNumber(klSkipFeeAmount)} (${klSkipFee.toFixed(1)}%)</div>
-                            </div>
-                        </span>
+                        <span class="summary-value">¥${formatNumber(klFeeAmount)}</span>
                     </div>
+                    <div class="fee-detail">支払い回数: ${klFeeRate.toFixed(1)}% | スキップ: ${klSkipFeeRate.toFixed(1)}% | 合計: ${klTotalFeeRate.toFixed(1)}%</div>
                     <div class="summary-row">
                         <span class="summary-label">5. 最終合計</span>
                         <span class="summary-value" style="color: var(--color-primary); font-weight: 700;">¥${formatNumber(klFinal)}</span>
@@ -1048,7 +1032,7 @@
                         <div class="form-group">
                             <label>スキップ回数</label>
                             <select id="${card.id}Skip" onchange="updateCalculation()">
-                                ${Object.keys(card.skip).map(s => `<option value="${s}">${s}回</option>`).join('')}
+                                ${Object.keys(skipFeeRates[card.id] || {}).map(s => `<option value="${s}">${s}回</option>`).join('')}
                             </select>
                         </div>
                     </div>
@@ -1084,10 +1068,13 @@
         function deleteCardType(cardId) {
             if (confirm('このカード種類を削除しますか？')) {
                 cardTypes = cardTypes.filter(c => c.id !== cardId);
+                delete skipFeeRates[cardId];
                 saveCardTypes();
+                saveSkipFeeRates();
                 renderCardSelects();
                 renderCardTypesTable();
                 renderCardPaymentTable();
+                renderSkipFeeTable();
                 updateCalculation();
             }
         }
@@ -1100,10 +1087,13 @@
                 payments: { 1: 0, 3: 0, 6: 0, 10: 0, 12: 0, 15: 0, 18: 0, 20: 0, 24: 0, 30: 0, 36: 0 },
                 skip: { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }
             });
+            skipFeeRates[newId] = { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 };
             saveCardTypes();
+            saveSkipFeeRates();
             renderCardSelects();
             renderCardTypesTable();
             renderCardPaymentTable();
+            renderSkipFeeTable();
             updateCalculation();
         }
 
@@ -1136,24 +1126,24 @@
             container.innerHTML = html;
         }
 
-        function renderCardSkipFeeTable() {
-            const container = document.getElementById('cardSkipFeeTable');
+        function renderSkipFeeTable() {
+            const container = document.getElementById('skipFeeTable');
             let html = '';
 
             cardTypes.forEach(card => {
                 html += `
                     <div style="margin-bottom: 12px;">
                         <h3 style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--color-primary);">${card.name}</h3>
-                        ${Object.entries(card.skipFees || { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }).map(([skip, fee]) => `
+                        ${Object.entries(skipFeeRates[card.id] || { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }).map(([skip, fee]) => `
                             <div class="product-item" style="margin-bottom: 6px;">
                                 <div class="row">
                                     <div class="form-group">
-                                        <label style="font-size: 11px;">スキップ月数</label>
+                                        <label style="font-size: 11px;">スキップ</label>
                                         <input type="text" value="${skip}ヶ月" disabled style="background: #f5f5f5;">
                                     </div>
                                     <div class="form-group">
                                         <label style="font-size: 11px;">手数料 (%)</label>
-                                        <input type="number" value="${fee}" step="0.1" min="0" onchange="updateCardSkipFee('${card.id}', ${skip}, this.value)">
+                                        <input type="number" value="${fee}" step="0.1" min="0" onchange="updateSkipFee('${card.id}', ${skip}, this.value)">
                                     </div>
                                 </div>
                             </div>
@@ -1174,16 +1164,13 @@
             }
         }
 
-        function updateCardSkipFee(cardId, skip, fee) {
-            const card = cardTypes.find(c => c.id === cardId);
-            if (card) {
-                if (!card.skipFees) {
-                    card.skipFees = {};
-                }
-                card.skipFees[skip] = parseFloat(fee) || 0;
-                saveCardTypes();
-                updateCalculation();
+        function updateSkipFee(cardId, skip, fee) {
+            if (!skipFeeRates[cardId]) {
+                skipFeeRates[cardId] = { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 };
             }
+            skipFeeRates[cardId][skip] = parseFloat(fee) || 0;
+            saveSkipFeeRates();
+            updateCalculation();
         }
 
         function addPresetItem(category) {
@@ -1395,21 +1382,10 @@
                         <span>${calc.jackx.payments}回</span>
                     </div>
                     <div class="detail-item">
-                        <span>スキップ月数</span>
-                        <span>${calc.jackx.skip}ヶ月</span>
+                        <span>手数料</span>
+                        <span>¥${formatNumber(calc.jackx.feeAmount)}</span>
                     </div>
-                    <div class="detail-item">
-                        <span>支払い回数手数料</span>
-                        <span>¥${formatNumber(calc.jackx.paymentFeeAmount)} (${calc.jackx.feeRate.toFixed(1)}%)</span>
-                    </div>
-                    <div class="detail-item">
-                        <span>スキップ手数料</span>
-                        <span>¥${formatNumber(calc.jackx.skipFeeAmount)} (${calc.jackx.skipFee.toFixed(1)}%)</span>
-                    </div>
-                    <div class="detail-item">
-                        <span>合計手数料</span>
-                        <span style="font-weight: 600;">¥${formatNumber(calc.jackx.feeAmount)} (${calc.jackx.totalFeeRate.toFixed(1)}%)</span>
-                    </div>
+                    <div class="fee-detail">支払い回数: ${calc.jackx.feeRate.toFixed(1)}% | スキップ: ${calc.jackx.skipFeeRate.toFixed(1)}% | 合計: ${calc.jackx.totalFeeRate.toFixed(1)}%</div>
                     <div class="detail-item">
                         <span>最終合計</span>
                         <span style="font-weight: 600; color: var(--color-primary);">¥${formatNumber(calc.jackx.final)}</span>
@@ -1427,21 +1403,10 @@
                         <span>${calc.kl.payments}回</span>
                     </div>
                     <div class="detail-item">
-                        <span>スキップ月数</span>
-                        <span>${calc.kl.skip}ヶ月</span>
+                        <span>手数料</span>
+                        <span>¥${formatNumber(calc.kl.feeAmount)}</span>
                     </div>
-                    <div class="detail-item">
-                        <span>支払い回数手数料</span>
-                        <span>¥${formatNumber(calc.kl.paymentFeeAmount)} (${calc.kl.feeRate.toFixed(1)}%)</span>
-                    </div>
-                    <div class="detail-item">
-                        <span>スキップ手数料</span>
-                        <span>¥${formatNumber(calc.kl.skipFeeAmount)} (${calc.kl.skipFee.toFixed(1)}%)</span>
-                    </div>
-                    <div class="detail-item">
-                        <span>合計手数料</span>
-                        <span style="font-weight: 600;">¥${formatNumber(calc.kl.feeAmount)} (${calc.kl.totalFeeRate.toFixed(1)}%)</span>
-                    </div>
+                    <div class="fee-detail">支払い回数: ${calc.kl.feeRate.toFixed(1)}% | スキップ: ${calc.kl.skipFeeRate.toFixed(1)}% | 合計: ${calc.kl.totalFeeRate.toFixed(1)}%</div>
                     <div class="detail-item">
                         <span>最終合計</span>
                         <span style="font-weight: 600; color: var(--color-primary);">¥${formatNumber(calc.kl.final)}</span>
@@ -1483,26 +1448,13 @@
             if (tabName === 'preset') {
                 renderCardTypesTable();
                 renderCardPaymentTable();
-                renderCardSkipFeeTable();
+                renderSkipFeeTable();
                 renderPresetListWithDiscounts('guard');
                 renderPresetListWithDiscounts('lining');
                 renderPresetListWithDiscounts('tailor');
                 renderPresetListWithDiscounts('other');
                 renderCategoryDiscountList();
             }
-        }
-
-        function downloadApp() {
-            const htmlContent = document.documentElement.outerHTML;
-            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
-            const link = document.createElement('a');
-            const url = URL.createObjectURL(blob);
-            link.setAttribute('href', url);
-            link.setAttribute('download', '分割手数料計算アプリ.html');
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
         function checkPassword() {
