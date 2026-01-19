@@ -454,6 +454,31 @@
             font-weight: 600;
             color: var(--color-text);
         }
+
+        .download-btn {
+            background: var(--color-success);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .download-btn:hover {
+            background: #1a8c8c;
+        }
+
+        .skip-fee-breakdown {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid var(--color-border);
+            font-size: 11px;
+        }
     </style>
 </head>
 <body>
@@ -472,6 +497,8 @@
                 <h1>分割手数料計算アプリ</h1>
                 <p class="subtitle">商品計算 × 支払い手数料</p>
             </header>
+
+            <button class="download-btn" onclick="downloadApp()">📥 アプリをダウンロード</button>
 
             <div class="tabs">
                 <button class="tab-btn active" onclick="switchTab('calculator')">計算</button>
@@ -524,6 +551,10 @@
                 <section>
                     <h2>カード手数料管理</h2>
                     <div id="cardPaymentTable"></div>
+                </section>
+                <section>
+                    <h2>スキップ手数料管理</h2>
+                    <div id="cardSkipFeeTable"></div>
                 </section>
                 <section>
                     <h2>ガード管理</h2>
@@ -668,6 +699,13 @@
                 ];
                 saveCardTypes();
             }
+
+            cardTypes.forEach(card => {
+                if (!card.skipFees) {
+                    card.skipFees = { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 };
+                }
+            });
+            saveCardTypes();
         }
 
         function initCategoryDiscounts() {
@@ -868,17 +906,21 @@
 
             const jackxCard = cardTypes.find(c => c.id === 'jackx');
             const jackxFeeRate = jackxCard && jackxCard.payments[jackxPayments] !== undefined ? jackxCard.payments[jackxPayments] : 0;
-            const jackxSkipFee = jackxCard && jackxCard.skip[jackxSkip] !== undefined ? jackxCard.skip[jackxSkip] : 0;
+            const jackxSkipFee = jackxCard && (jackxCard.skipFees && jackxCard.skipFees[jackxSkip] !== undefined) ? jackxCard.skipFees[jackxSkip] : 0;
             const jackxTotalFeeRate = jackxFeeRate + jackxSkipFee;
-            const jackxFeeAmount = Math.floor(totalAfterDiscount * (jackxTotalFeeRate / 100));
+            const jackxPaymentFeeAmount = Math.floor(totalAfterDiscount * (jackxFeeRate / 100));
+            const jackxSkipFeeAmount = Math.floor(totalAfterDiscount * (jackxSkipFee / 100));
+            const jackxFeeAmount = jackxPaymentFeeAmount + jackxSkipFeeAmount;
             const jackxFinal = totalAfterDiscount + jackxFeeAmount;
             const jackxPerMonth = Math.floor(jackxFinal / jackxPayments * 100) / 100;
 
             const klCard = cardTypes.find(c => c.id === 'kl');
             const klFeeRate = klCard && klCard.payments[klPayments] !== undefined ? klCard.payments[klPayments] : 0;
-            const klSkipFee = klCard && klCard.skip[klSkip] !== undefined ? klCard.skip[klSkip] : 0;
+            const klSkipFee = klCard && (klCard.skipFees && klCard.skipFees[klSkip] !== undefined) ? klCard.skipFees[klSkip] : 0;
             const klTotalFeeRate = klFeeRate + klSkipFee;
-            const klFeeAmount = Math.floor(totalAfterDiscount * (klTotalFeeRate / 100));
+            const klPaymentFeeAmount = Math.floor(totalAfterDiscount * (klFeeRate / 100));
+            const klSkipFeeAmount = Math.floor(totalAfterDiscount * (klSkipFee / 100));
+            const klFeeAmount = klPaymentFeeAmount + klSkipFeeAmount;
             const klFinal = totalAfterDiscount + klFeeAmount;
             const klPerMonth = Math.floor(klFinal / klPayments * 100) / 100;
 
@@ -894,6 +936,8 @@
                     feeRate: jackxFeeRate,
                     skipFee: jackxSkipFee,
                     totalFeeRate: jackxTotalFeeRate,
+                    paymentFeeAmount: jackxPaymentFeeAmount,
+                    skipFeeAmount: jackxSkipFeeAmount,
                     feeAmount: jackxFeeAmount,
                     final: jackxFinal,
                     perMonth: jackxPerMonth
@@ -904,6 +948,8 @@
                     feeRate: klFeeRate,
                     skipFee: klSkipFee,
                     totalFeeRate: klTotalFeeRate,
+                    paymentFeeAmount: klPaymentFeeAmount,
+                    skipFeeAmount: klSkipFeeAmount,
                     feeAmount: klFeeAmount,
                     final: klFinal,
                     perMonth: klPerMonth
@@ -928,7 +974,12 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">4. 手数料</span>
-                        <span class="summary-value">¥${formatNumber(jackxFeeAmount)} (${jackxTotalFeeRate.toFixed(1)}%)</span>
+                        <span class="summary-value">¥${formatNumber(jackxFeeAmount)} (${jackxTotalFeeRate.toFixed(1)}%)
+                            <div class="skip-fee-breakdown">
+                                <div>支払い回数手数料: ¥${formatNumber(jackxPaymentFeeAmount)} (${jackxFeeRate.toFixed(1)}%)</div>
+                                <div>スキップ手数料: ¥${formatNumber(jackxSkipFeeAmount)} (${jackxSkipFee.toFixed(1)}%)</div>
+                            </div>
+                        </span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">5. 最終合計</span>
@@ -955,7 +1006,12 @@
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">4. 手数料</span>
-                        <span class="summary-value">¥${formatNumber(klFeeAmount)} (${klTotalFeeRate.toFixed(1)}%)</span>
+                        <span class="summary-value">¥${formatNumber(klFeeAmount)} (${klTotalFeeRate.toFixed(1)}%)
+                            <div class="skip-fee-breakdown">
+                                <div>支払い回数手数料: ¥${formatNumber(klPaymentFeeAmount)} (${klFeeRate.toFixed(1)}%)</div>
+                                <div>スキップ手数料: ¥${formatNumber(klSkipFeeAmount)} (${klSkipFee.toFixed(1)}%)</div>
+                            </div>
+                        </span>
                     </div>
                     <div class="summary-row">
                         <span class="summary-label">5. 最終合計</span>
@@ -1080,10 +1136,51 @@
             container.innerHTML = html;
         }
 
+        function renderCardSkipFeeTable() {
+            const container = document.getElementById('cardSkipFeeTable');
+            let html = '';
+
+            cardTypes.forEach(card => {
+                html += `
+                    <div style="margin-bottom: 12px;">
+                        <h3 style="font-size: 12px; font-weight: 600; margin-bottom: 8px; color: var(--color-primary);">${card.name}</h3>
+                        ${Object.entries(card.skipFees || { 0: 0, 1: 0.5, 2: 1.0, 3: 1.5, 4: 2.0, 5: 2.5, 6: 3.0 }).map(([skip, fee]) => `
+                            <div class="product-item" style="margin-bottom: 6px;">
+                                <div class="row">
+                                    <div class="form-group">
+                                        <label style="font-size: 11px;">スキップ月数</label>
+                                        <input type="text" value="${skip}ヶ月" disabled style="background: #f5f5f5;">
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 11px;">手数料 (%)</label>
+                                        <input type="number" value="${fee}" step="0.1" min="0" onchange="updateCardSkipFee('${card.id}', ${skip}, this.value)">
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        }
+
         function updateCardPayment(cardId, payments, fee) {
             const card = cardTypes.find(c => c.id === cardId);
             if (card) {
                 card.payments[payments] = parseFloat(fee) || 0;
+                saveCardTypes();
+                updateCalculation();
+            }
+        }
+
+        function updateCardSkipFee(cardId, skip, fee) {
+            const card = cardTypes.find(c => c.id === cardId);
+            if (card) {
+                if (!card.skipFees) {
+                    card.skipFees = {};
+                }
+                card.skipFees[skip] = parseFloat(fee) || 0;
                 saveCardTypes();
                 updateCalculation();
             }
@@ -1298,8 +1395,20 @@
                         <span>${calc.jackx.payments}回</span>
                     </div>
                     <div class="detail-item">
-                        <span>手数料率</span>
-                        <span>${calc.jackx.totalFeeRate.toFixed(1)}%</span>
+                        <span>スキップ月数</span>
+                        <span>${calc.jackx.skip}ヶ月</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>支払い回数手数料</span>
+                        <span>¥${formatNumber(calc.jackx.paymentFeeAmount)} (${calc.jackx.feeRate.toFixed(1)}%)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>スキップ手数料</span>
+                        <span>¥${formatNumber(calc.jackx.skipFeeAmount)} (${calc.jackx.skipFee.toFixed(1)}%)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>合計手数料</span>
+                        <span style="font-weight: 600;">¥${formatNumber(calc.jackx.feeAmount)} (${calc.jackx.totalFeeRate.toFixed(1)}%)</span>
                     </div>
                     <div class="detail-item">
                         <span>最終合計</span>
@@ -1318,8 +1427,20 @@
                         <span>${calc.kl.payments}回</span>
                     </div>
                     <div class="detail-item">
-                        <span>手数料率</span>
-                        <span>${calc.kl.totalFeeRate.toFixed(1)}%</span>
+                        <span>スキップ月数</span>
+                        <span>${calc.kl.skip}ヶ月</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>支払い回数手数料</span>
+                        <span>¥${formatNumber(calc.kl.paymentFeeAmount)} (${calc.kl.feeRate.toFixed(1)}%)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>スキップ手数料</span>
+                        <span>¥${formatNumber(calc.kl.skipFeeAmount)} (${calc.kl.skipFee.toFixed(1)}%)</span>
+                    </div>
+                    <div class="detail-item">
+                        <span>合計手数料</span>
+                        <span style="font-weight: 600;">¥${formatNumber(calc.kl.feeAmount)} (${calc.kl.totalFeeRate.toFixed(1)}%)</span>
                     </div>
                     <div class="detail-item">
                         <span>最終合計</span>
@@ -1362,12 +1483,26 @@
             if (tabName === 'preset') {
                 renderCardTypesTable();
                 renderCardPaymentTable();
+                renderCardSkipFeeTable();
                 renderPresetListWithDiscounts('guard');
                 renderPresetListWithDiscounts('lining');
                 renderPresetListWithDiscounts('tailor');
                 renderPresetListWithDiscounts('other');
                 renderCategoryDiscountList();
             }
+        }
+
+        function downloadApp() {
+            const htmlContent = document.documentElement.outerHTML;
+            const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', '分割手数料計算アプリ.html');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
 
         function checkPassword() {
