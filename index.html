@@ -633,16 +633,22 @@
             'homongi_hitoe': '訪問着(単衣)',
             'tsukesage_awase': '付下げ(袷)',
             'tsukesage_hitoe': '付下げ(単衣)',
+            'tsukesage_summer': '付下げ(夏物)',
             'nagajuban_awase': '長襦袢(袷)',
             'nagajuban_hitoe': '長襦袢(単衣)',
             'coat_awase': 'コート(袷)',
             'coat_hitoe': 'コート(単衣)',
             'obi': '帯',
-            'small_discount': '小物(値引き有り)',
-            'small_no_discount': '小物(値引き無し)'
+            'small': '小物'
         };
 
-        const categoryList = ['kimono_awase', 'kimono_hitoe', 'homongi_awase', 'homongi_hitoe', 'tsukesage_awase', 'tsukesage_hitoe', 'nagajuban_awase', 'nagajuban_hitoe', 'coat_awase', 'coat_hitoe', 'obi', 'small_discount', 'small_no_discount'];
+        const categoryList = ['kimono_awase', 'kimono_hitoe', 'homongi_awase', 'homongi_hitoe', 'tsukesage_awase', 'tsukesage_hitoe', 'tsukesage_summer', 'nagajuban_awase', 'nagajuban_hitoe', 'coat_awase', 'coat_hitoe', 'obi', 'small'];
+
+        function formatDateJP(date) {
+            const d = new Date(date);
+            return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + 
+                   ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2) + ':' + ('0' + d.getSeconds()).slice(-2);
+        }
 
         function initPresetData() {
             const saved = localStorage.getItem('presetData');
@@ -657,6 +663,7 @@
             initCategoryDiscounts();
             initProductDiscountRates();
             initSkipFeeRates();
+            loadLastUpdateTimes();
         }
 
         function initCardTypes() {
@@ -691,15 +698,6 @@
                 categoryList.forEach(cat => {
                     categoryDiscounts[cat] = { student: 0, member: 0, instructor: 0 };
                 });
-                // 古いデータから移行対応
-                if (categoryDiscounts['small']) {
-                    categoryDiscounts['small_discount'] = categoryDiscounts['small'];
-                    categoryDiscounts['small_no_discount'] = { student: 0, member: 0, instructor: 0 };
-                    delete categoryDiscounts['small'];
-                }
-                if (categoryDiscounts['tsukesage_summer']) {
-                    delete categoryDiscounts['tsukesage_summer'];
-                }
                 saveCategoryDiscounts();
             }
         }
@@ -731,6 +729,23 @@
 
         function saveFeeStructureData() {
             localStorage.setItem('feeStructureData', JSON.stringify(feeStructureData));
+        }
+
+        let lastUpdateTimes = {};
+
+        function saveLastUpdateTimes() {
+            localStorage.setItem('lastUpdateTimes', JSON.stringify(lastUpdateTimes));
+        }
+
+        function loadLastUpdateTimes() {
+            const saved = localStorage.getItem('lastUpdateTimes');
+            if (saved) lastUpdateTimes = JSON.parse(saved);
+        }
+
+        function updateLastUpdateTime(section) {
+            lastUpdateTimes[section] = new Date().toISOString();
+            saveLastUpdateTimes();
+            renderCategoryDiscountList();
         }
 
         function saveSkipFeeRates() {
@@ -810,13 +825,13 @@
                                 <option value="homongi_hitoe" ${product.category === 'homongi_hitoe' ? 'selected' : ''}>訪問着(単衣)</option>
                                 <option value="tsukesage_awase" ${product.category === 'tsukesage_awase' ? 'selected' : ''}>付下げ(袷)</option>
                                 <option value="tsukesage_hitoe" ${product.category === 'tsukesage_hitoe' ? 'selected' : ''}>付下げ(単衣)</option>
+                                <option value="tsukesage_summer" ${product.category === 'tsukesage_summer' ? 'selected' : ''}>付下げ(夏物)</option>
                                 <option value="nagajuban_awase" ${product.category === 'nagajuban_awase' ? 'selected' : ''}>長襦袢(袷)</option>
                                 <option value="nagajuban_hitoe" ${product.category === 'nagajuban_hitoe' ? 'selected' : ''}>長襦袢(単衣)</option>
                                 <option value="coat_awase" ${product.category === 'coat_awase' ? 'selected' : ''}>コート(袷)</option>
                                 <option value="coat_hitoe" ${product.category === 'coat_hitoe' ? 'selected' : ''}>コート(単衣)</option>
                                 <option value="obi" ${product.category === 'obi' ? 'selected' : ''}>帯</option>
-                                <option value="small_discount" ${product.category === 'small_discount' ? 'selected' : ''}>小物(値引き有り)</option>
-                                <option value="small_no_discount" ${product.category === 'small_no_discount' ? 'selected' : ''}>小物(値引き無し)</option>
+                                <option value="small" ${product.category === 'small' ? 'selected' : ''}>小物</option>
                                 <option value="guard" ${product.category === 'guard' ? 'selected' : ''}>ガード</option>
                                 <option value="lining" ${product.category === 'lining' ? 'selected' : ''}>裏物</option>
                                 <option value="tailor" ${product.category === 'tailor' ? 'selected' : ''}>仕立</option>
@@ -1160,6 +1175,7 @@
             if (card) {
                 card.payments[payments] = parseFloat(fee) || 0;
                 saveCardTypes();
+                updateLastUpdateTime('cardPayment');
                 updateCalculation();
             }
         }
@@ -1170,6 +1186,7 @@
             }
             skipFeeRates[cardId][skip] = parseFloat(fee) || 0;
             saveSkipFeeRates();
+            updateLastUpdateTime('skipFee');
             updateCalculation();
         }
 
@@ -1191,6 +1208,7 @@
                 presetData[category][index].name = value;
             }
             savePresetData();
+            updateLastUpdateTime(category);
             renderPresetList(category);
         }
 
@@ -1198,6 +1216,7 @@
             if (confirm('削除しますか？')) {
                 presetData[category].splice(index, 1);
                 savePresetData();
+                updateLastUpdateTime(category);
                 renderPresetList(category);
             }
         }
@@ -1205,7 +1224,7 @@
         function renderPresetListWithDiscounts(category) {
             const container = document.getElementById(category === 'guard' ? 'guardList' : category === 'lining' ? 'liningList' : category === 'tailor' ? 'tailorList' : 'otherList');
 
-            container.innerHTML = presetData[category].map((item, index) => {
+            html += presetData[category].map((item, index) => {
                 const showDiscounts = ['guard', 'lining', 'tailor'].includes(category);
                 const productDiscounts = productDiscountRates[`${category}_${item.id}`] || { student: 0, member: 0, instructor: 0 };
 
@@ -1242,6 +1261,7 @@
                     </div>
                 `;
             }).join('');
+            container.innerHTML = html;
         }
 
         function renderPresetList(category) {
@@ -1250,31 +1270,37 @@
 
         function renderCategoryDiscountList() {
             const container = document.getElementById('categoryDiscountList');
+            const lastUpdate = lastUpdateTimes['categoryDiscount'] ? formatDateJP(lastUpdateTimes['categoryDiscount']) : '未更新';
 
-            container.innerHTML = categoryList.map(category => `
-                <div class="product-item">
-                    <div class="form-group">
-                        <label style="font-weight: 600;">${categoryLabels[category]}</label>
-                    </div>
-                    <div style="background: #f0f0f0; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
-                        <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 6px;">割引率設定</label>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
-                            <div>
-                                <label style="font-size: 10px;">修科生 (%)</label>
-                                <input type="number" value="${categoryDiscounts[category]?.student || 0}" onchange="updateCategoryDiscount('${category}', 'student', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 10px;">しゅう美会生 (%)</label>
-                                <input type="number" value="${categoryDiscounts[category]?.member || 0}" onchange="updateCategoryDiscount('${category}', 'member', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
-                            </div>
-                            <div>
-                                <label style="font-size: 10px;">講師 (%)</label>
-                                <input type="number" value="${categoryDiscounts[category]?.instructor || 0}" onchange="updateCategoryDiscount('${category}', 'instructor', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
+            container.innerHTML = `
+                <div style="background: #f0f0f0; border-radius: 6px; padding: 12px; margin-bottom: 12px; font-size: 12px; color: var(--color-text-secondary);">
+                    最終更新: ${lastUpdate}
+                </div>
+                ${categoryList.map(category => `
+                    <div class="product-item">
+                        <div class="form-group">
+                            <label style="font-weight: 600;">${categoryLabels[category]}</label>
+                        </div>
+                        <div style="background: #f0f0f0; border-radius: 4px; padding: 8px; margin-bottom: 8px;">
+                            <label style="font-size: 11px; font-weight: 600; display: block; margin-bottom: 6px;">割引率設定</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px;">
+                                <div>
+                                    <label style="font-size: 10px;">修科生 (%)</label>
+                                    <input type="number" value="${categoryDiscounts[category]?.student || 0}" onchange="updateCategoryDiscount('${category}', 'student', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 10px;">しゅう美会生 (%)</label>
+                                    <input type="number" value="${categoryDiscounts[category]?.member || 0}" onchange="updateCategoryDiscount('${category}', 'member', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
+                                </div>
+                                <div>
+                                    <label style="font-size: 10px;">講師 (%)</label>
+                                    <input type="number" value="${categoryDiscounts[category]?.instructor || 0}" onchange="updateCategoryDiscount('${category}', 'instructor', this.value)" step="0.1" min="0" max="100" style="width: 100%; padding: 4px; font-size: 11px;">
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `).join('')}
+            `;
         }
 
         function updateCategoryDiscount(category, customerType, value) {
@@ -1283,6 +1309,7 @@
             }
             categoryDiscounts[category][customerType] = parseFloat(value) || 0;
             saveCategoryDiscounts();
+            updateLastUpdateTime('categoryDiscount');
             updateCalculation();
         }
 
@@ -1293,6 +1320,7 @@
             }
             productDiscountRates[key][customerType] = parseFloat(value) || 0;
             saveProductDiscountRates();
+            updateLastUpdateTime(category);
             updateCalculation();
         }
 
